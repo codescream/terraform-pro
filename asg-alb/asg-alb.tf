@@ -3,11 +3,11 @@ data "aws_key_pair" "devops" {
   include_public_key = true
 }
 
-resource "aws_instance" "instance-pro" {
-  ami                    = var.image-id
-  instance_type          = var.instance-type
-  vpc_security_group_ids = [aws_security_group.pro-sg.id]
-  key_name               = data.aws_key_pair.devops.key_name
+resource "aws_launch_configuration" "instance-lc-asg" {
+  image_id  = var.image-id
+  instance_type   = var.instance-type
+  security_groups = [aws_security_group.pro-sg.id]
+  key_name        = data.aws_key_pair.devops.key_name
 
   user_data = <<-EOF
               #!/bin/bash
@@ -21,15 +21,38 @@ resource "aws_instance" "instance-pro" {
               systemctl restart firewalld
               EOF
 
-  user_data_replace_on_change = true
+  lifecycle {
+    create_before_destroy = true
+  }
+}
 
-  tags = {
-    Name = "terraform-pro"
+data "aws_vpc" "pro-vpc" {
+  id = var.vpc-id
+}
+
+data "aws_subnets" "vpc-subnets" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.pro-vpc.id]
+  }
+}
+
+resource "aws_autoscaling_group" "pro-asg" {
+  launch_configuration = aws_launch_configuration.instance-lc-asg.name
+  vpc_zone_identifier  = data.aws_subnets.vpc-subnets.ids
+  min_size             = 2
+  max_size             = 2
+
+  tag {
+    key                 = "Name"
+    value               = "terraform-pro-asg"
+    propagate_at_launch = true
   }
 }
 
 resource "aws_security_group" "pro-sg" {
-  name = "terraform-pro-sg"
+  name   = "terraform-pro-sg"
+  vpc_id = data.aws_vpc.pro-vpc.id
   ingress {
     from_port   = var.http-port
     to_port     = var.http-port
@@ -53,7 +76,7 @@ resource "aws_security_group" "pro-sg" {
   }
 }
 
-output "ec2-public-ip" {
-  value       = aws_instance.instance-pro.public_ip
-  description = "the public ip of instance"
-}
+# output "ec2-public-ip" {
+#   value       = aws_instance.instance-pro.public_ip
+#   description = "the public ip of instance"
+# }
