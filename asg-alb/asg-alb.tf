@@ -4,10 +4,10 @@ data "aws_key_pair" "devops" {
 }
 
 resource "aws_launch_configuration" "instance-lc-asg" {
-  image_id        = var.image-id
-  instance_type   = var.instance-type
-  security_groups = [aws_security_group.pro-sg.id]
-  key_name        = data.aws_key_pair.devops.key_name
+  image_id                    = var.image-id
+  instance_type               = var.instance-type
+  security_groups             = [aws_security_group.pro-sg.id]
+  key_name                    = data.aws_key_pair.devops.key_name
   associate_public_ip_address = true
 
   user_data = <<-EOF
@@ -57,7 +57,7 @@ resource "aws_autoscaling_group" "pro-asg" {
 resource "aws_security_group" "pro-sg" {
   name   = "terraform-pro-sg"
   vpc_id = data.aws_vpc.pro-vpc.id
-  
+
   ingress {
     from_port   = var.http-port
     to_port     = var.http-port
