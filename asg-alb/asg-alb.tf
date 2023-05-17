@@ -4,11 +4,11 @@ data "aws_key_pair" "devops" {
 }
 
 resource "aws_launch_configuration" "instance-lc-asg" {
-  image_id                    = var.image-id
-  instance_type               = var.instance-type
-  security_groups             = [aws_security_group.pro-sg.id]
-  key_name                    = data.aws_key_pair.devops.key_name
-  associate_public_ip_address = true
+  image_id        = var.image-id
+  instance_type   = var.instance-type
+  security_groups = [aws_security_group.pro-ec2-sg.id]
+  key_name        = data.aws_key_pair.devops.key_name
+  # associate_public_ip_address = true
 
   user_data = <<-EOF
               #!/bin/bash
@@ -31,14 +31,29 @@ data "aws_vpc" "pro-vpc" {
   id = var.vpc-id
 }
 
+data "aws_security_group" "default-vpc-sg" {
+  vpc_id = data.aws_vpc.pro-vpc.id
+
+  filter {
+    name = "group-name"
+    values = ["default"]
+  }
+}
+
 data "aws_subnets" "vpc-subnets" {
   filter {
     name   = "vpc-id"
     values = [data.aws_vpc.pro-vpc.id]
   }
+
+  filter {
+    name = "map-public-ip-on-launch"
+    values = ["true"]
+  }
 }
 
 resource "aws_autoscaling_group" "pro-asg" {
+  name = "terraform-pro-asg"
   launch_configuration = aws_launch_configuration.instance-lc-asg.name
   vpc_zone_identifier  = data.aws_subnets.vpc-subnets.ids
   target_group_arns    = [aws_lb_target_group.pro-tg.arn]
@@ -54,8 +69,8 @@ resource "aws_autoscaling_group" "pro-asg" {
   }
 }
 
-resource "aws_security_group" "pro-sg" {
-  name   = "terraform-pro-sg"
+resource "aws_security_group" "pro-alb-sg" {
+  name   = "pro-alb-sg"
   vpc_id = data.aws_vpc.pro-vpc.id
 
   ingress {
@@ -81,11 +96,38 @@ resource "aws_security_group" "pro-sg" {
   }
 }
 
+resource "aws_security_group" "pro-ec2-sg" {
+  name   = "pro-ec2-sg"
+  vpc_id = data.aws_vpc.pro-vpc.id
+
+  ingress {
+    from_port   = var.http-port
+    to_port     = var.http-port
+    protocol    = "tcp"
+    security_groups = ["${aws_security_group.pro-alb-sg.id}"]
+  }
+
+  ingress {
+    from_port   = var.ssh-port
+    to_port     = var.ssh-port
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port        = var.egress-port
+    to_port          = var.egress-port
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+}
+
 resource "aws_lb" "pro-lb" {
   name               = "terraform-pro-lb"
   internal           = false
   load_balancer_type = "application"
-  security_groups    = [aws_security_group.pro-sg.id]
+  security_groups    = [aws_security_group.pro-alb-sg.id, data.aws_security_group.default-vpc-sg.id]
   subnets            = data.aws_subnets.vpc-subnets.ids
 }
 
@@ -121,7 +163,7 @@ resource "aws_lb_target_group" "pro-tg" {
     matcher             = "200"
     path                = "/"
     protocol            = "HTTP"
-    timeout             = 3
+    timeout             = 10
     unhealthy_threshold = 2
   }
 }
