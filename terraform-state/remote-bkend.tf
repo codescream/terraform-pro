@@ -1,9 +1,12 @@
 resource "aws_s3_bucket" "terraform_state" {
   bucket = "terraform-pro-s3-bkt"
+
+  #enable destruction of the bucket with its contents
+  force_destroy = true
  
   # Prevent accidental deletion of this S3 bucket
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
   }
 }
 
