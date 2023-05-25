@@ -17,6 +17,8 @@ resource "aws_launch_configuration" "instance-lc-asg" {
               systemctl enable httpd
               systemctl start httpd
               echo "Hello, World" > /var/www/html/index.html
+              echo "${data.terraform_remote_state.db.outputs.address}" >> /var/www/html/index.html
+              echo "${data.terraform_remote_state.db.outputs.port}" >> /var/www/html/index.html
               systemctl restart httpd
               firewall-cmd --permanent --add-port=80/tcp && firewall-cmd --reload
               systemctl restart firewalld
@@ -52,6 +54,16 @@ data "aws_subnets" "vpc-subnets" {
   }
 }
 
+data "terraform_remote_state" "db" {
+  backend = "s3"
+
+  config = {
+    bucket = "terraform-pro-s3-bkt"
+    key    = "stage/data-stores/mysql/terraform.tfstate"
+    region = "us-east-1"
+  }
+}
+
 resource "aws_autoscaling_group" "pro-asg" {
   name = "terraform-pro-asg"
   launch_configuration = aws_launch_configuration.instance-lc-asg.name
@@ -59,8 +71,8 @@ resource "aws_autoscaling_group" "pro-asg" {
   target_group_arns    = [aws_lb_target_group.pro-tg.arn]
 
   health_check_type = "ELB"
-  min_size          = 6
-  max_size          = 6
+  min_size          = 2
+  max_size          = 2
 
   tag {
     key                 = "Name"

@@ -37,5 +37,5 @@ variable "egress-port" {
 variable "vpc-id" {
   description = "vpc to launch our resources into"
   type        = string
-  default     = "vpc-0a465fac31bd11a57"
+  default     = "vpc-07fe0e70d536180a1"
 }
