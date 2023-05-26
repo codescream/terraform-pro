@@ -1,15 +1,15 @@
-# terraform {
-#   backend "s3" {
-#     # Replace this with your bucket name!
-#     bucket         = "terraform-pro-s3-bkt"
-#     key            = "global/s3/terraform.tfstate"
-#     region         = "us-east-1"
+terraform {
+  backend "s3" {
+    # Replace this with your bucket name!
+    bucket         = "terraform-pro-s3-bkt"
+    key            = "stage/services/webserver-cluster/terraform.tfstate"
+    region         = "us-east-1"
 
-#     # Replace this with your DynamoDB table name!
-#     dynamodb_table = "terraform-pro-locks"
-#     encrypt        = true
-#   }
-# }
+    # Replace this with your DynamoDB table name!
+    dynamodb_table = "terraform-pro-locks"
+    encrypt        = true
+  }
+}
 
 # OR
 
