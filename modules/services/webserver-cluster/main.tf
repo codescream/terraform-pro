@@ -1,5 +1,5 @@
 data "aws_key_pair" "devops" {
-  key_name           = "devops"
+  key_name           = ""
   include_public_key = true
 }
 
@@ -17,8 +17,6 @@ resource "aws_launch_configuration" "instance-lc-asg" {
               systemctl enable httpd
               systemctl start httpd
               echo "Hello, World" > /var/www/html/index.html
-              echo "${data.terraform_remote_state.db.outputs.address}" >> /var/www/html/index.html
-              echo "${data.terraform_remote_state.db.outputs.port}" >> /var/www/html/index.html
               systemctl restart httpd
               firewall-cmd --permanent --add-port=80/tcp && firewall-cmd --reload
               systemctl restart firewalld
@@ -54,18 +52,18 @@ data "aws_subnets" "vpc-subnets" {
   }
 }
 
-data "terraform_remote_state" "db" {
-  backend = "s3"
+# data "terraform_remote_state" "db" {
+#   backend = "s3"
 
-  config = {
-    bucket = "terraform-pro-s3-bkt"
-    key    = "stage/data-stores/mysql/terraform.tfstate"
-    region = "us-east-1"
-  }
-}
+#   config = {
+#     bucket = "terraform-pro-s3-bkt"
+#     key    = "stage/data-stores/mysql/terraform.tfstate"
+#     region = "us-east-1"
+#   }
+# }
 
 resource "aws_autoscaling_group" "pro-asg" {
-  name = "terraform-pro-asg"
+  name = "${var.cluster-name}-asg"
   launch_configuration = aws_launch_configuration.instance-lc-asg.name
   vpc_zone_identifier  = data.aws_subnets.vpc-subnets.ids
   target_group_arns    = [aws_lb_target_group.pro-tg.arn]
@@ -82,7 +80,7 @@ resource "aws_autoscaling_group" "pro-asg" {
 }
 
 resource "aws_security_group" "pro-alb-sg" {
-  name   = "pro-alb-sg"
+  name   = "${var.cluster-name}-alb-sg"
   vpc_id = data.aws_vpc.pro-vpc.id
 
   ingress {
@@ -109,7 +107,7 @@ resource "aws_security_group" "pro-alb-sg" {
 }
 
 resource "aws_security_group" "pro-ec2-sg" {
-  name   = "pro-ec2-sg"
+  name   = "${var.cluster-name}-ec2-sg"
   vpc_id = data.aws_vpc.pro-vpc.id
 
   ingress {
@@ -136,7 +134,7 @@ resource "aws_security_group" "pro-ec2-sg" {
 }
 
 resource "aws_lb" "pro-lb" {
-  name               = "terraform-pro-lb"
+  name               = "${var.cluster-name}-pro-lb"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.pro-alb-sg.id, data.aws_security_group.default-vpc-sg.id]
@@ -160,7 +158,7 @@ resource "aws_lb_listener" "pro-lb-listener" {
 }
 
 resource "aws_lb_target_group" "pro-tg" {
-  name     = "terraform-pro-tg"
+  name     = "${var.cluster-name}-pro-tg"
   port     = var.http-port
   protocol = "HTTP"
   vpc_id   = data.aws_vpc.pro-vpc.id
