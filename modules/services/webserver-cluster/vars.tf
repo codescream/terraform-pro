@@ -7,7 +7,7 @@ variable "region" {
 variable "image-id" {
   description = "ami to use for ec2 instances"
   type        = string
-  # default     = "ami-016eb5d644c333ccb"
+  default     = "ami-016eb5d644c333ccb"
   # default = "ami-02b8534ff4b424939"
 }
 
@@ -17,23 +17,23 @@ variable "instance-type" {
   default     = "t2.small"
 }
 
-variable "http-port" {
-  description = "http port"
-  type        = number
-  default     = 80
-}
+# variable "http-port" {
+#   description = "http port"
+#   type        = number
+#   default     = 80
+# }
 
-variable "ssh-port" {
-  description = "ssh port"
-  type        = number
-  default     = 22
-}
+# variable "ssh-port" {
+#   description = "ssh port"
+#   type        = number
+#   default     = 22
+# }
 
-variable "egress-port" {
-  description = "outgoing port"
-  type        = number
-  default     = 0
-}
+# variable "egress-port" {
+#   description = "outgoing port"
+#   type        = number
+#   default     = 0
+# }
 
 variable "vpc-id" {
   description = "vpc to launch our resources into"

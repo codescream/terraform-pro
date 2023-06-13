@@ -42,21 +42,21 @@ resource "aws_db_instance" "pro-db" {
   password = var.db_password
 }
 
-terraform {
-  backend "s3" {
-    # Partial configuration. Other settings
-    # will be passed in from a file via -backend-config to 
-    # 'terraform init'
-    # Replace this with your bucket name!
-    # bucket = "terraform-pro-s3-bkt"
-    key    = "stage/data-stores/mysql/terraform.tfstate"
-    # region = "us-east-1"
+# terraform {
+#   backend "s3" {
+#     # Partial configuration. Other settings
+#     # will be passed in from a file via -backend-config to 
+#     # 'terraform init'
+#     # Replace this with your bucket name!
+#     # bucket = "terraform-pro-s3-bkt"
+#     key    = "stage/data-stores/mysql/terraform.tfstate"
+#     # region = "us-east-1"
 
-    # # Replace this with your DynamoDB table name!
-    # dynamodb_table = "terraform-pro-locks"
-    # encrypt        = true
-  }
-}
+#     # # Replace this with your DynamoDB table name!
+#     # dynamodb_table = "terraform-pro-locks"
+#     # encrypt        = true
+#   }
+# }
 
 # terraform {
 #   backend "local" {

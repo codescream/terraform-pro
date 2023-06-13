@@ -1,6 +1,17 @@
 data "aws_key_pair" "devops" {
-  key_name           = ""
+  key_name           = var.keypair
   include_public_key = true
+}
+
+locals {
+  http_port    = 80
+  ssh_port     = 22
+  any_port     = 0
+  any_protocol = "-1"
+  tcp_protocol = "tcp"
+  all_ips      = ["0.0.0.0/0"]
+  ipv6_cidr_blocks = ["::/0"]
+  http_protocol = "HTTP"
 }
 
 resource "aws_launch_configuration" "instance-lc-asg" {
@@ -52,16 +63,6 @@ data "aws_subnets" "vpc-subnets" {
   }
 }
 
-# data "terraform_remote_state" "db" {
-#   backend = "s3"
-
-#   config = {
-#     bucket = "terraform-pro-s3-bkt"
-#     key    = "stage/data-stores/mysql/terraform.tfstate"
-#     region = "us-east-1"
-#   }
-# }
-
 resource "aws_autoscaling_group" "pro-asg" {
   name = "${var.cluster-name}-asg"
   launch_configuration = aws_launch_configuration.instance-lc-asg.name
@@ -69,8 +70,8 @@ resource "aws_autoscaling_group" "pro-asg" {
   target_group_arns    = [aws_lb_target_group.pro-tg.arn]
 
   health_check_type = "ELB"
-  min_size          = 2
-  max_size          = 2
+  min_size          = 3
+  max_size          = 3
 
   tag {
     key                 = "Name"
@@ -84,25 +85,25 @@ resource "aws_security_group" "pro-alb-sg" {
   vpc_id = data.aws_vpc.pro-vpc.id
 
   ingress {
-    from_port   = var.http-port
-    to_port     = var.http-port
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port   = local.http_port
+    to_port     = local.http_port
+    protocol    = local.tcp_protocol
+    cidr_blocks = local.all_ips
   }
 
   ingress {
-    from_port   = var.ssh-port
-    to_port     = var.ssh-port
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port   = local.ssh_port
+    to_port     = local.ssh_port
+    protocol    = local.tcp_protocol
+    cidr_blocks = local.all_ips
   }
 
   egress {
-    from_port        = var.egress-port
-    to_port          = var.egress-port
-    protocol         = "-1"
-    cidr_blocks      = ["0.0.0.0/0"]
-    ipv6_cidr_blocks = ["::/0"]
+    from_port        = local.any_port
+    to_port          = local.any_port
+    protocol         = local.any_protocol
+    cidr_blocks      = local.all_ips
+    ipv6_cidr_blocks = local.ipv6_cidr_blocks
   }
 }
 
@@ -111,25 +112,25 @@ resource "aws_security_group" "pro-ec2-sg" {
   vpc_id = data.aws_vpc.pro-vpc.id
 
   ingress {
-    from_port   = var.http-port
-    to_port     = var.http-port
-    protocol    = "tcp"
+    from_port   = local.http_port
+    to_port     = local.http_port
+    protocol    = local.ssh_port
     security_groups = ["${aws_security_group.pro-alb-sg.id}"]
   }
 
   ingress {
-    from_port   = var.ssh-port
-    to_port     = var.ssh-port
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port   = local.ssh_port
+    to_port     = local.ssh_port
+    protocol    = local.tcp_protocol
+    cidr_blocks = local.all_ips
   }
 
   egress {
-    from_port        = var.egress-port
-    to_port          = var.egress-port
-    protocol         = "-1"
-    cidr_blocks      = ["0.0.0.0/0"]
-    ipv6_cidr_blocks = ["::/0"]
+    from_port        = local.any_port
+    to_port          = local.any_port
+    protocol         = local.any_protocol
+    cidr_blocks      = local.all_ips
+    ipv6_cidr_blocks = local.ipv6_cidr_blocks
   }
 }
 
@@ -143,8 +144,8 @@ resource "aws_lb" "pro-lb" {
 
 resource "aws_lb_listener" "pro-lb-listener" {
   load_balancer_arn = aws_lb.pro-lb.arn
-  port              = "80"
-  protocol          = "HTTP"
+  port              = local.http_port
+  protocol          = local.http_protocol
 
   default_action {
     type = "fixed-response"
@@ -159,8 +160,8 @@ resource "aws_lb_listener" "pro-lb-listener" {
 
 resource "aws_lb_target_group" "pro-tg" {
   name     = "${var.cluster-name}-pro-tg"
-  port     = var.http-port
-  protocol = "HTTP"
+  port     = local.http_port
+  protocol = local.http_protocol
   vpc_id   = data.aws_vpc.pro-vpc.id
 
   lifecycle {
@@ -172,7 +173,7 @@ resource "aws_lb_target_group" "pro-tg" {
     interval            = 15
     matcher             = "200"
     path                = "/"
-    protocol            = "HTTP"
+    protocol            = local.http_protocol
     timeout             = 10
     unhealthy_threshold = 2
   }
